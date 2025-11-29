@@ -1,0 +1,179 @@
+<?php
+
+//super global variable - can be access anywhere in the project without the need to declare it as global
+// $_GET,  $_POST, $_SESSION - most commonly used global variables
+//Super global variables request methods post(secured) and get (not secured)
+
+class controller{
+    private $connection; //global variable - can be access to any methods
+
+    public function __construct(){
+        $this->connection = $this ->create_connection();
+    }
+
+    public function create_connection(){
+        //server nmae, password, user
+        if(!defined('DB_HOST')){
+            define('DB_HOST', 'localhost');
+        }
+
+         if(!defined('DB_USER')){
+            define('DB_USER', 'root');
+        }
+
+         if(!defined('DB_PASSWORD')){
+            define('DB_PASSWORD', '');
+        }
+
+         if(!defined('DB_NAME')){
+            define('DB_NAME', 'crud_php_2');
+        }
+
+        $connection = new mysqli(DB_HOST, DB_USER, DB_PASSWORD, DB_NAME);
+
+        if ($connection->connect_error){
+            die("Connection Failed." .$connection->connect_error);
+        }
+
+        echo "<script> console.log('There was a connection'); </script>";
+        return $connection;
+    }
+
+    public function read_all(){
+        $sql = "SELECT * FROM users";
+        $stmt = $this->connection->prepare($sql);
+        $stmt -> execute();
+
+        $result = $stmt ->get_result();
+        
+        return $result ->fetch_all(MYSQLI_ASSOC);//associative - ASSOC
+    }
+
+    public function actionReader(){
+        if(isset($_GET['method_finder'])){
+            $action = $_GET['method_finder'];
+
+            if($action === 'create'){
+                $this->create();
+            }
+            else if($action === 'delete'){
+                $this->delete();
+            }
+            else if($action==='edit'){
+                $this->edit();
+            }
+            else if($action==='update'){
+                $this->update();
+            }
+        }
+    }
+    public function update(){
+        $id = $_POST['id'];
+        $new_last_name = $_POST['new_last_name'];
+        $new_first_name = $_POST['new_first_name'];
+        $new_middle_name = $_POST['new_middle_name'];
+
+        //if id is not null
+        if ($id){
+            $sql ="UPDATE users SET first_name=?, middle_name=?, last_name=? WHERE id=?";
+            $stmt = $this->connection->prepare($sql);
+
+            if($stmt){
+                $stmt->bind_param("sssi",$new_first_name,$new_middle_name,$new_last_name,$id);
+                if($stmt->execute()){
+                    $location="../Frontend/homepage.php";
+                    header("location:$location");
+                    exit();
+                }else{
+                    echo "There is an error during the execution";
+                }
+            }else{
+                echo "The statement is wrong";
+            }
+        }else{
+            echo "There is no id.";
+        }
+    }
+
+
+    public function take_info_by_id($id){
+        $sql = "SELECT * FROM users WHERE id = ?";
+
+        $stmt = $this->connection->prepare($sql);
+
+        if($stmt){
+            $stmt->bind_param("i",$id);
+            if ($stmt->execute()){
+                $result=$stmt->get_result();
+                return $result->fetch_assoc();
+            }else{
+                echo "Failed to fetch user information";
+            }
+        }
+        else{
+            echo "The statement / connection is wrong";
+        }
+    }
+
+
+    //function edit is to pass the id to our another frontend called update page
+    public function edit(){
+        $id = $_GET['id'];
+        //var_dump($id);
+
+        //echo $id;
+        if ($id !== null){
+            $location = "../Frontend/Update_page.php?id=".urlencode($id);//for protection
+            header("location: $location");
+        }else{
+            echo "There is no id";
+        }
+    }
+
+    public function delete(){
+        //$id = $_GET('id');
+
+        //echo $id;
+
+        $id = intval($_GET['id']);
+        // $id = (int) $_GET()
+
+        $sql = "DELETE FROM users WHERE id = ?";//create sql statement to delete
+        $stmt = $this->connection->prepare($sql);
+
+        if ($stmt){
+            $stmt ->bind_param("i",$id);//anti injection
+
+            if($stmt->execute()){
+                $location ="../Frontend/homepage.php";
+                header("location:$location"); 
+            }
+        }
+    }
+
+    public function create(){
+        $last_name = $_POST['last_name'];
+        $first_name = $_POST['first_name'];
+        $middle_name = $_POST['middle_name'];
+       
+
+        //connection and adding
+        //INSERT STATEMENT FORM SQL
+        $sql="INSERT INTO users (last_name, first_name, middle_name) VALUES(?, ?, ?)";
+        $stmt=$this->connection->prepare($sql);
+        $stmt->bind_param("sss", $last_name, $first_name, $middle_name);
+
+        if($stmt->execute()){
+            $LOCATION = "../Frontend/homepage.php";
+            header("Location:$LOCATION?success=1");
+            exit();
+        }else{
+            echo "Error!";
+        }
+    }
+}
+
+$controller = new controller();
+$controller->actionReader();
+
+?>
